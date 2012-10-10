@@ -23,10 +23,12 @@ namespace jq
 			handle(const handle&);
 			handle& operator=(const handle& rhs);
 
+			bool valid() const;
 			void wait();
 			void cancel();
 
 			friend class task_scheduler;
+
 		private:
 			typedef boost::signals2::signal<void()> sigtype;
 			handle(task_scheduler&,

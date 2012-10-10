@@ -35,9 +35,9 @@ BOOST_AUTO_TEST_CASE( task_scheduler_void_task_test )
 	BOOST_CHECK( (actual_duration - expected_duration) / expected_duration < tolerance );
 }
 
-struct task
+struct btask
 {
-	task(int init, int maximum) : m_value(init), m_maximum(maximum)
+	btask(int init, int maximum) : m_value(init), m_maximum(maximum)
 	{
 		assert(m_value < m_maximum);
 	}
@@ -54,18 +54,17 @@ struct task
 
 BOOST_AUTO_TEST_CASE( task_scheduler_boolean_task_test )
 {
-
 	const int init = 0;
 	const int maximum = 29;
-	task t(init, maximum);
+	btask t(init, maximum);
 	jq::active_task_scheduler scheduler(1);
 	const double frequency = 17.0;
 	const double expected_duration = (maximum - init) * 1000.0 / frequency;
 	boost::posix_time::ptime start = boost::posix_time::microsec_clock::universal_time();
 	jq::task_scheduler::handle h = scheduler.schedule<bool>("bool",
 							frequency,
-							boost::bind(&task::increase, &t));
-	BOOST_CHECK_THROW( scheduler.schedule<bool>("bool", frequency, boost::bind(&task::increase, &t)), jq::key_exists_error );
+							boost::bind(&btask::increase, &t));
+	BOOST_CHECK_THROW( scheduler.schedule<bool>("bool", frequency, boost::bind(&btask::increase, &t)), jq::key_exists_error );
 	h.wait();
 	boost::posix_time::ptime end = boost::posix_time::microsec_clock::universal_time();
 	boost::posix_time::time_duration elapsed = end - start;
@@ -163,7 +162,6 @@ struct cancel_self_task
 
 BOOST_AUTO_TEST_CASE( task_scheduler_recursive_cancel_test )
 {
-
 	jq::active_task_scheduler scheduler(1);
 	const std::string task_name = "hello";
 	const int cancel_when = 15;
@@ -179,5 +177,63 @@ BOOST_AUTO_TEST_CASE( task_scheduler_recursive_cancel_test )
 	const long double_interval = 2.0 * 1000.0 / frequency;
 	boost::this_thread::sleep(boost::posix_time::milliseconds(double_interval));
 	BOOST_CHECK( !scheduler.exists(task_name) );
+}
+
+BOOST_AUTO_TEST_CASE( task_scheduler_madness_test )
+{
+	jq::task_scheduler::handle ch, bh, vh; 
+	{
+		jq::active_task_scheduler scheduler(3);
+		const std::string vtask_name = "void";
+		const double vfrequency = 153.0;
+		const int vmaximum = 13573647;
+		incrementor vtask(0);
+
+		const std::string btask_name = "bool";
+		const double bfrequency = vfrequency + 13;	
+		const int bmaximum = 23345690;
+		btask b(0, bmaximum);
+
+		const std::string ctask_name = "suisider";
+		const double cfrequency = vfrequency + 2.0;
+		const int cancel_when = 378635238;
+		cancel_self_task c(scheduler, ctask_name, 0, cancel_when);
+
+		BOOST_CHECK(!ch.valid());
+		BOOST_CHECK(!bh.valid());
+		BOOST_CHECK(!vh.valid());
+
+		for(unsigned int i = 0; i < 10000; ++i) {
+			if (!ch.valid()) {
+				ch = scheduler.schedule<void>(ctask_name, 13.0, boost::bind(&cancel_self_task::execute, &c));
+				BOOST_CHECK( ch.valid() );
+			}
+			else if (i % 357 == 13) {
+				ch.cancel();
+				BOOST_CHECK( !ch.valid() );
+			}
+
+			if (!bh.valid()) {
+				bh = scheduler.schedule<bool>(btask_name, bfrequency, boost::bind(&btask::increase, &b), bmaximum);
+				BOOST_CHECK( bh.valid() );
+			}
+			else if (i % 234 == 17) {
+				bh.cancel();
+				BOOST_CHECK( !bh.valid() );
+			}
+
+			if (!vh.valid()) {
+				vh = scheduler.schedule<void>(vtask_name, vfrequency, boost::bind(&incrementor::increase, &vtask), vmaximum);
+				BOOST_CHECK( vh.valid() );
+			}
+			else if (i % 11 == 9) {
+				vh.cancel();
+				BOOST_CHECK( vh.valid() );
+			}
+		}
+		if (ch.valid()) ch.cancel();
+	}
+	BOOST_CHECK(!bh.valid());
+	BOOST_CHECK(!vh.valid());
 }
 

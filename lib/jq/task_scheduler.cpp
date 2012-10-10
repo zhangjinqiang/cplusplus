@@ -23,10 +23,19 @@ task_scheduler::handle::handle(const handle& rhs)
     m_semaphore(),
     m_connection()
 {
-	if(m_valid) {
+	if (m_valid) {
 		if(boost::shared_ptr<sigtype> s = m_signal.lock()) {
 			m_connection = s->connect(boost::bind(&handle::notified, this));
-    			m_semaphore.reset(new boost::interprocess::interprocess_semaphore(0));
+			if(rhs.m_connection.connected()) {
+    				m_semaphore.reset(new boost::interprocess::interprocess_semaphore(0));
+			}
+			else {
+				m_connection.disconnect();
+				m_valid = false;
+			}
+		}
+		else {
+			m_valid = false;
 		}
 	}
 }
@@ -39,24 +48,35 @@ task_scheduler::handle& task_scheduler::handle::operator=(const task_scheduler::
 	if(boost::shared_ptr<sigtype> s = m_signal.lock()) {
 		if (m_valid) {
 			m_connection = s->connect(boost::bind(&handle::notified, this));
-    			m_semaphore.reset(new boost::interprocess::interprocess_semaphore(0));
+			if(rhs.m_connection.connected()) {
+    				m_semaphore.reset(new boost::interprocess::interprocess_semaphore(0));
+			}
+			else {
+				m_connection.disconnect();
+				m_valid = false;
+			}
 		}
 	}
 	else {
 		m_valid = false;
 	}
 
-	if(!m_valid) {
-		m_semaphore.reset();
-	}
-
 	return *this;
+}
+
+bool task_scheduler::handle::valid() const
+{
+	return m_valid;
 }
 
 void task_scheduler::handle::wait()
 {
 	if (m_valid && m_semaphore) {
-		m_semaphore->wait();
+		if (m_connection.connected()) {
+			m_semaphore->wait();
+			m_connection.disconnect();
+			m_valid = false;
+		}
 	}
 }
 
@@ -65,9 +85,8 @@ void task_scheduler::handle::cancel()
 	if (m_valid) {
 		assert(m_id != 0);
 		m_scheduler->cancel(m_id);
+		wait();
 	}
-
-	wait();
 }
 
 task_scheduler::handle::handle (task_scheduler& scheduler,
@@ -153,17 +172,17 @@ void task_scheduler::register_next_run(task_info& ti, unsigned long to_wait)
 
 void task_scheduler::execute(const boost::system::error_code& error, task_info& ti)
 {
-	bool task_alive = false;
 	if(!error)
 	{
+		bool task_alive = false;
 		try {
 			boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
 			bool to_continue = ti.functor();
 			ti.executed_times += 1;
-			if(to_continue) {
+			if (to_continue) {
 				to_continue = ti.maximum_times_to_run == 0 || ti.executed_times < ti.maximum_times_to_run;
 			}
-			if(to_continue) {
+			if (to_continue) {
 				boost::posix_time::ptime end = boost::posix_time::microsec_clock::local_time();
 				unsigned long consumed = (end - start).total_milliseconds();
 				unsigned long next_interval = consumed > ti.interval ? 1 : ti.interval - consumed;
@@ -174,10 +193,10 @@ void task_scheduler::execute(const boost::system::error_code& error, task_info& 
 		catch(const std::exception& e) {
 			ti.h->error_ocurred(e.what());
 		}
-	}
-		
-	if (!task_alive) {
-		task_finished(ti.h->m_id);
+	
+		if (!task_alive) {
+			task_finished(ti.h->m_id);
+		}
 	}
 }
 
@@ -192,7 +211,9 @@ void task_scheduler::cancel(const std::string& name)
 			h = cancel_impl(id);	
 		}
 	}
-	h->wait();
+	if (h) {
+		h->wait();
+	}
 }
 
 void task_scheduler::cancel(unsigned int id)
@@ -205,7 +226,9 @@ void task_scheduler::cancel(unsigned int id)
 			h = cancel_impl(id);
 		}
 	}
-	h->wait();
+	if (h) {
+		h->wait();
+	}
 }
 
 boost::shared_ptr<task_scheduler::handle> task_scheduler::cancel_impl(unsigned int id)
