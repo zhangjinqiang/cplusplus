@@ -1,8 +1,11 @@
 #ifndef JQ_TASK_SCHEDULER_H
 #define JQ_TASK_SCHEDULER_H
 
+#include "call_on_release.h"
+#include "thread_safe_object.h"
 #include <boost/asio.hpp>
 #include <boost/interprocess/sync/interprocess_semaphore.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/signals2.hpp>
 #include <boost/bimap.hpp>
@@ -31,17 +34,20 @@ namespace jq
 
 		private:
 			typedef boost::signals2::signal<void()> sigtype;
-			handle(task_scheduler&,
+			handle( task_scheduler&,
 				unsigned int id,
 				const boost::shared_ptr<sigtype>&);
+			void establish(const handle&);
 			void notified();
 			void error_ocurred(const std::string&){}
+			void clear();
 
+			boost::mutex m_mutex;
 			task_scheduler *m_scheduler;
 			bool m_valid;
 			boost::weak_ptr<sigtype> m_signal;
 			unsigned int m_id;
-			boost::shared_ptr<boost::interprocess::interprocess_semaphore> m_semaphore;
+			boost::scoped_ptr<boost::interprocess::interprocess_semaphore> m_semaphore;
 			boost::signals2::scoped_connection m_connection;
 		};
 
@@ -70,12 +76,9 @@ namespace jq
 
 		bool exists(const std::string& name) const;
 
-		//! this function gurantees after the return, the task won't execute any more
-		void cancel(const std::string& name);
-
 		friend class handler;
-
 	private:
+		typedef boost::signals2::signal<void ()> sig_type;
 		struct task_info
 		{
 			task_info(boost::asio::io_service& io,
@@ -84,20 +87,27 @@ namespace jq
 				  unsigned long maximum_running_times);
 			~task_info();
 
+			void cancel();
+
+			bool executing;
+			boost::thread::id thread_id;
 			bool_task functor;
 			unsigned long interval;//! in milliseconds
-			boost::shared_ptr<boost::signals2::signal<void()> > signal;
+			boost::shared_ptr<sig_type> signal;
 			boost::shared_ptr<handle> h;
 			boost::asio::deadline_timer timer;
 			unsigned long maximum_times_to_run;
 			unsigned long executed_times;
+			jq::thread_safe_object<bool> cancelled;
+			boost::signals2::connection cancel_connection;
 		};
 
-		void register_next_run(task_info&, unsigned long to_wait);
-		void execute(const boost::system::error_code&, task_info&);
-		void cancel(unsigned int id);
-		boost::shared_ptr<handle> cancel_impl(unsigned int id);
-		void task_finished(unsigned int id);
+		typedef boost::shared_ptr<jq::call_on_release<void_task> > signal_holder;
+		void register_next_run(const boost::shared_ptr<task_info>&, unsigned long to_wait, const signal_holder&);
+		void execute(const boost::system::error_code&, const boost::shared_ptr<task_info>&, signal_holder);
+		//! return true means recursively cancelled
+		bool cancel(unsigned int id);
+		void cancel_from_task_natural_exit(unsigned int id);
 		void remove_record(unsigned int id);
 
 		mutable boost::mutex m_mutex;
