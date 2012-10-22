@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-set (TARGET circles_moving_in_container)
+set (TARGET circles_moving)
 project (${TARGET})
 
 set (CMAKE_CXX_FLAGS "-W -Wall ${CMAKE_CXX_FLAGS}")
@@ -29,7 +29,7 @@ set (srcs
      main.cpp)
 
 include_directories (${CMAKE_BINARY_DIR})
-add_executable (circles_moving_in_container
+add_executable (${TARGET}
 		${srcs}
 		${qt_moced})
 link_directories (${Boost_ROOT}/lib)
