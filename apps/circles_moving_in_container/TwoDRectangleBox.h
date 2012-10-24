@@ -3,6 +3,18 @@
 
 #include <vector>
 
+struct circle
+{
+    float x;
+    float y;
+    float radius;
+    float vx;
+    float vy;
+    float color_r;
+    float color_g;
+    float color_b;
+};
+
 class TwoDRectangleBox
 {
 public:
@@ -16,21 +28,24 @@ public:
     void draw();
 
 private:
-	struct circle
-	{
-		float m_x;
-		float m_y;
-		float m_radius;
-		float m_x_speed;
-		float m_y_speed;
-        float m_color_r;
-        float m_color_g;
-        float m_color_b;
-	};
+
+    struct block
+    {
+        float left;
+        float right;
+        float top;
+        float bottom;
+        std::vector<circle*> objects;
+    };
 
     double m_width;
     double m_length;
     std::vector<circle> m_circles;
+    float m_block_width;
+    float m_block_length;
+    std::size_t m_block_rows;
+    std::size_t m_block_cols;
+    std::vector<std::vector<block> > m_blocks;
 };
 
 #endif // TWODRECTANGLEBOX_H
