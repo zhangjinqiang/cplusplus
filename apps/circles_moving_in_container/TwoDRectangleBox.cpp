@@ -20,16 +20,33 @@ TwoDRectangleBox::~TwoDRectangleBox()
 {
 }
 
+double distance(double x1, double y1, double x2, double y2)
+{
+    const double dx = x2 - x1;
+    const double dy = y2 - y1;
+    return std::sqrt(dx*dx + dy*dy);
+}
+
 double distance(const circle& a, const circle& b)
 {
-    const double dx = b.x - a.x;
-    const double dy = b.y - a.y;
-    return std::sqrt(dx*dx + dy*dy);
+    return distance(a.x, a.y, b.x, b.y);
 }
 
 bool collided(const circle& a, const circle& b)
 {
     return distance(a, b) <= (a.radius + b.radius + 0.3);
+}
+
+bool seperating(const circle& a, const circle& b)
+{
+    const double dist = distance(a, b);
+    const double ax_next = a.x + a.vx * 0.001;
+    const double ay_next = a.y + a.vy * 0.001;
+    const double bx_next = b.x + b.vx * 0.001;
+    const double by_next = b.y + b.vy * 0.001;
+    const double dist_next = distance(ax_next, ay_next, bx_next, by_next);
+
+    return dist < dist_next;
 }
 
 float sign(float x)
@@ -163,7 +180,9 @@ void TwoDRectangleBox::update(double deltaT)
                 for (std::size_t a = 0; a < objects.size(); ++a) {
                     for (std::size_t b = a + 1; b < objects.size(); ++b) {
                         if (collided(*objects.at(a), *objects.at(b))) {
-                            on_collision(*objects.at(a), *objects.at(b));
+                            if (!seperating(*objects.at(a), *objects.at(b))) {
+                                on_collision(*objects.at(a), *objects.at(b));
+                            }
                         }
                     }
                 }
@@ -196,8 +215,8 @@ void TwoDRectangleBox::draw()
 
 void TwoDRectangleBox::initialize()
 {
-    const float radius = std::min(m_width, m_length) / 60;
-    for (unsigned int i = 0; i < 80; ++i) {
+    const float radius = std::min(m_width, m_length) / 90;
+    for (unsigned int i = 0; i < 300; ++i) {
         circle c;
         c.radius = radius;
         c.x = rand() % int(m_width -c.radius);
@@ -205,8 +224,8 @@ void TwoDRectangleBox::initialize()
         c.y = rand() % int(m_length -c.radius);
         if (c.y < c.radius)c.y = c.radius;
 
-        c.vx = 26 + rand() % 20;
-        c.vy = 28 + rand() % 22;
+        c.vx = 6 + rand() % 40;
+        c.vy = 8 + rand() % 52;
 
         const int denominator = 100;
 
@@ -217,7 +236,7 @@ void TwoDRectangleBox::initialize()
         m_circles.push_back(c);
     }
 
-    m_block_width = radius * 7;
+    m_block_width = radius * 8;
     m_block_length = m_block_width;
     m_block_cols = std::floor(m_width / m_block_width);
     m_block_rows = std::floor(m_length / m_block_length);
