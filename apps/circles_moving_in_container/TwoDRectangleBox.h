@@ -18,7 +18,7 @@ struct circle
 class TwoDRectangleBox
 {
 public:
-    TwoDRectangleBox(double width, double length);
+    TwoDRectangleBox(double width, double length, std::size_t circle_numbers);
     ~TwoDRectangleBox();
 
     void initialize();
@@ -26,6 +26,8 @@ public:
     void update(double deltaT);
 
     void draw();
+
+    void resize(int w, int h);
 
 private:
 
@@ -38,8 +40,10 @@ private:
         std::vector<circle*> objects;
     };
 
+    bool m_resized;
     double m_width;
     double m_length;
+    std::size_t m_circle_numbers;
     std::vector<circle> m_circles;
     float m_block_width;
     float m_block_length;

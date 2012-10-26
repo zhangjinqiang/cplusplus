@@ -4,7 +4,7 @@
 
 GLWidget::GLWidget(QWidget *parent )
  : QGLWidget(parent),
-   m_model(1000, 600),
+   m_model(QGLWidget::width(), QGLWidget::height(), 200),
    m_frequency(20),
    m_timer(new QTimer(this))
 {
@@ -30,6 +30,7 @@ void GLWidget::resizeGL(int w, int h) {
 	glOrtho(0, w, h, 0, -1, 1);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+    m_model.resize(w, h);
 }
 
 void GLWidget::repaint()

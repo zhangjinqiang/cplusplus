@@ -3,9 +3,11 @@
 #include <cmath>
 #include <stdlib.h>
 
-TwoDRectangleBox::TwoDRectangleBox(double width, double length)
- :  m_width(width),
+TwoDRectangleBox::TwoDRectangleBox(double width, double length, std::size_t circle_numbers)
+ :  m_resized(true),
+    m_width(width),
     m_length(length),
+    m_circle_numbers(circle_numbers),
     m_circles(),
     m_block_width(),
     m_block_length(),
@@ -34,7 +36,9 @@ double distance(const circle& a, const circle& b)
 
 bool collided(const circle& a, const circle& b)
 {
-    return distance(a, b) <= (a.radius + b.radius + 0.3);
+    return std::fabs(a.x - b.x) < (a.radius + b.radius) &&
+           std::fabs(a.y - b.y) < (a.radius + b.radius) &&
+           distance(a, b) <= (a.radius + b.radius + 0.01);
 }
 
 bool seperating(const circle& a, const circle& b)
@@ -73,27 +77,15 @@ void on_collision(circle& a, circle& b)
     a.vy += fy;
     b.vx -= fx;
     b.vy -= fy;
-
-/*    const float reasonable_distance = a.radius + b.radius;
-    if (dist < reasonable_distance) {
-        const float diff = reasonable_distance - dist;
-        if (a.vx == 0) {
-            a.y += sign(a.vy) * diff;
-        }
-        else if (a.vy == 0) {
-            a.x += sign(a.vx) * diff;
-        }
-        else {
-            const float yaw = std::atan2(a.vy, a.vx);
-            a.x += diff * std::cos(yaw);
-            a.y += diff * std::sin(yaw);
-        }
-    }
-*/
 }
 
 void TwoDRectangleBox::update(double deltaT)
 {
+    if (m_resized) {
+        m_resized = false;
+        initialize();
+    }
+
     //clear objects information inside every block
     for (std::size_t r = 0; r < m_blocks.size(); ++r) {
         std::vector<block>& col = m_blocks.at(r);
@@ -200,7 +192,7 @@ void draw_cirle(float x, float y, float radius, float step = 1.5)
 }
 
 void TwoDRectangleBox::draw()
-{
+{   
     glClear(GL_COLOR_BUFFER_BIT);
     glColor3f(0.2, 0.2, 0.2);
 
@@ -213,10 +205,20 @@ void TwoDRectangleBox::draw()
     }
 }
 
+void TwoDRectangleBox::resize(int w, int h)
+{
+    m_width = w;
+    m_length = h;
+    m_resized = true;
+}
+
 void TwoDRectangleBox::initialize()
 {
-    const float radius = std::min(m_width, m_length) / 90;
-    for (unsigned int i = 0; i < 300; ++i) {
+    const float radius = std::min(m_width, m_length) / 88;
+    if (!m_circles.empty()) {
+        m_circles.clear();
+    }
+    for (unsigned int i = 0; i < m_circle_numbers; ++i) {
         circle c;
         c.radius = radius;
         c.x = rand() % int(m_width -c.radius);
@@ -224,8 +226,8 @@ void TwoDRectangleBox::initialize()
         c.y = rand() % int(m_length -c.radius);
         if (c.y < c.radius)c.y = c.radius;
 
-        c.vx = 6 + rand() % 40;
-        c.vy = 8 + rand() % 52;
+        c.vx = 26 + rand() % 40;
+        c.vy = 28 + rand() % 52;
 
         const int denominator = 100;
 
@@ -242,6 +244,9 @@ void TwoDRectangleBox::initialize()
     m_block_rows = std::floor(m_length / m_block_length);
     m_block_width = m_width / float(m_block_cols);
     m_block_length = m_length / float(m_block_rows);
+    if (!m_blocks.empty()) {
+        m_blocks.clear();
+    }
     for(std::size_t r = 0; r < m_block_rows; ++r) {
         std::vector<block> row;
         for(std::size_t c = 0; c < m_block_cols; ++c) {
