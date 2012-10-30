@@ -49,16 +49,14 @@ void GLWidget::paintGL()
         m_keyPressed = false;
         m_model.key_input(m_keyInput);
     }
-    glPushMatrix();
-        glTranslatef(x, y, 0.F);
-        m_model.draw();
-    glPopMatrix();
+    m_model.update(1.0/m_frequency);
+    m_model.draw();
 }
 
 void GLWidget::mousePressEvent(QMouseEvent */*event*/) {
 }
 
-void GLWidget::mouseMoveEvent(QMouseEvent *event) {
+void GLWidget::mouseMoveEvent(QMouseEvent */*event*/) {
     //printf("%d, %d\n", event->x(), event->y());
 }
 

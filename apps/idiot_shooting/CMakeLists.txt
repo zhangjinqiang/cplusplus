@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-set (TARGET keyboard_moving_texture)
+set (TARGET idiot_shooting)
 project (${TARGET})
 
 set (CMAKE_CXX_FLAGS "-W -Wall ${CMAKE_CXX_FLAGS}")
