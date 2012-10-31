@@ -8,7 +8,7 @@ namespace jq
     class Model
     {
     public:
-        Model();
+        Model(float w, float h);
         ~Model();
 
         void initialize();
@@ -44,12 +44,34 @@ namespace jq
             }
         };
 
+        struct enemy
+        {
+            float x;
+            float y;
+            float z;
+            float width;
+            float length;
+            float xv;
+            float yv;
+            float radius;
+            color perimeter_color;
+
+            enemy();
+            void update(float deltaT);
+            void draw();
+        };
+
         float m_x;
         float m_y;
+        float m_w;
+        float m_h;
         float m_width;
         float m_length;
         color m_color;
         std::list<bullet> m_bullets;
+        std::list<enemy> m_enemies;
+        float m_deltaTAccumulated;
+        float m_shootingThreshold;
     };
 }
 

@@ -4,7 +4,7 @@
 
 GLWidget::GLWidget(QWidget *parent )
  : QGLWidget(parent),
-   m_model(),
+   m_model(width(), height()),
    m_frequency(20),
    m_timer(new QTimer(this)),
    x(0.F),
